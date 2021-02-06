@@ -1,6 +1,6 @@
 # NOAA-APT-Decoder-on-ExcelVBA
 
-32bitExcelで動くNOAA　APT　デコーダです。
+Excelで動くNOAA　APT　デコーダです。
 
 「職場で聴く星の声」を購入した方向けですが、そうでなくとも構いません。勝手に使ってください。
 
