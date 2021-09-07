@@ -1,4 +1,4 @@
-# NOAA-APT-Decoder-on-ExcelVBA
+# NOAA_APT_Decoder_on_ExcelVBA
 
 Excelで動くNOAA　APT　デコーダです。
 
