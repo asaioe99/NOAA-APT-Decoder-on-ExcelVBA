@@ -1,0 +1,165 @@
+Private Declare PtrSafe Function waveInGetNumDevs Lib "winmm.dll" () As Long
+Private nWaveInDevice As Long
+Type WAVEFORMATEX
+    wFormatTags     As Integer
+    nChannels       As Integer
+    nSamplesPerSec  As Long
+    nAvgBytesPerSec As Long
+    nBlockAlign     As Integer
+    wBitsPerSamples As Integer
+    cbSize          As Integer
+End Type
+Private Declare PtrSafe Function waveInOpen Lib "winmm.dll" (lphWaveIn As LongPtr, ByVal uDeviceID As Long, lpFormat As WAVEFORMATEX, ByVal dwCallback As LongPtr, ByVal dwInstance As LongPtr, ByVal dwFlags As Long) As Long
+Private hWaveIn As LongPtr
+Private fmtWaveIn As WAVEFORMATEX
+Type WAVEHDR
+    lpData As LongPtr
+    dwBufferLength As Long
+    dwBytesRecorded As Long
+    dwUser As LongPtr
+    dwFlags As Long
+    dwLoops As Long
+    lpNext As LongPtr
+    Reserved As LongPtr
+End Type
+Private hdrWaveIn As WAVEHDR
+Private Buf() As Integer
+Private Pic_Buf(CLng(2000) * 400) As Byte
+Private Pic As Integer
+Private n As Integer
+Private BMP_HDR(1078) As Byte
+Public Declare PtrSafe Function waveInClose Lib "winmm.dll" (ByVal hWaveIn As LongPtr) As Long
+Public Declare PtrSafe Function waveInPrepareHeader Lib "winmm.dll" (ByVal hWaveIn As LongPtr, lpWaveInHdr As WAVEHDR, ByVal uSize As Long) As Long
+Public Declare PtrSafe Function waveInUnprepareHeader Lib "winmm.dll" (ByVal hWaveIn As LongPtr, lpWaveInHdr As WAVEHDR, ByVal uSize As Long) As Long
+Public Declare PtrSafe Function waveInAddBuffer Lib "winmm.dll" (ByVal hWaveIn As LongPtr, lpWaveInHdr As WAVEHDR, ByVal uSize As Long) As Long
+Public Declare PtrSafe Function waveInStart Lib "winmm.dll" (ByVal hWaveIn As LongPtr) As Long
+
+Sub ボタン1_Click()
+    Dim i As Long
+    nWaveInDevice = waveInGetNumDevs()
+    MsgBox "使用できるマイクの数は" & nWaveInDevice & "です"
+End Sub
+Sub ボタン2_Click()
+    Dim i As Long
+    fmtWaveIn.wFormatTags = 1
+    fmtWaveIn.nChannels = 1
+    fmtWaveIn.nSamplesPerSec = 48000
+    fmtWaveIn.wBitsPerSamples = 16
+    fmtWaveIn.nAvgBytesPerSec = 96000
+    fmtWaveIn.nBlockAlign = 2
+    fmtWaveIn.cbSize = 0
+
+    i = waveInOpen(hWaveIn, 0, fmtWaveIn, 0, 0, &H8)
+    If i <> 0 Then
+        MsgBox "デバイスをオープンできませんでした", vbOKOnly
+        MsgBox i
+        GoTo LExit
+    End If
+    
+    hdrWaveIn.dwFlags = 0
+    hdrWaveIn.dwLoops = 1
+    hdrWaveIn.dwBufferLength = fmtWaveIn.nSamplesPerSec * 400
+    ReDim Buf(hdrWaveIn.dwBufferLength - 1)
+    hdrWaveIn.lpData = VarPtr(Buf(0))
+    
+    i = waveInPrepareHeader(hWaveIn, hdrWaveIn, 48)
+    i = waveInAddBuffer(hWaveIn, hdrWaveIn, 48)
+    i = waveInStart(hWaveIn)
+InLoop:
+    If hdrWaveIn.dwFlags <> &H3 Then
+        DoEvents
+        GoTo InLoop
+    End If
+    i = waveInUnprepareHeader(hWaveIn, hdrWaveIn, 48)
+    i = waveInClose(hWaveIn)
+LExit:
+    '以下は波形表示
+    'For i = 1 To 480 'シートへのBuf中身の書き出し
+    '    Worksheets("Sheet1").Cells(i, 1).Value = Buf(i - 1)
+    'Next i
+    'Range("A1:A120").Select
+    'ActiveSheet.Shapes.AddChart2(227, xlLine).Select
+    'ActiveChart.SetSourceData Source:=Range("Sheet1!$A$1:$A$120") '折れ線グラフとしてグラフとして表示
+    For i = 0 To CLng(2000) * 400 - 1
+        Pic = 0
+        For n = 0 To 11
+            If Buf(i * 12 + n) = -32768 Then
+                Pic = 32767
+            Else
+                If Abs(Buf(i * 12 + n)) > Pic Then Pic = Abs(Buf(i * 12 + n))
+            End If
+        Next n
+        Pic_Buf(i) = Pic \ 128
+    Next i
+    
+    BMP_HDR(0) = 66
+    BMP_HDR(1) = 77
+    BMP_HDR(2) = 12
+    BMP_HDR(3) = 57
+    BMP_HDR(4) = 54
+    BMP_HDR(5) = 0
+    BMP_HDR(6) = 0
+    BMP_HDR(7) = 0
+    BMP_HDR(8) = 0
+    BMP_HDR(9) = 0
+    BMP_HDR(10) = 54
+    BMP_HDR(11) = 4
+    BMP_HDR(12) = 0
+    BMP_HDR(13) = 0
+    BMP_HDR(14) = 40
+    BMP_HDR(15) = 0
+    BMP_HDR(16) = 0
+    BMP_HDR(17) = 0
+    BMP_HDR(18) = 208
+    BMP_HDR(19) = 7
+    BMP_HDR(20) = 0
+    BMP_HDR(21) = 0
+    BMP_HDR(22) = 144
+    BMP_HDR(23) = 1
+    BMP_HDR(24) = 0
+    BMP_HDR(25) = 0
+    BMP_HDR(26) = 1
+    BMP_HDR(27) = 0
+    BMP_HDR(28) = 8
+    BMP_HDR(29) = 0
+    BMP_HDR(30) = 0
+    BMP_HDR(31) = 0
+    BMP_HDR(32) = 0
+    BMP_HDR(33) = 0
+    BMP_HDR(34) = 240
+    BMP_HDR(35) = 72
+    BMP_HDR(36) = 23
+    BMP_HDR(37) = 0
+    BMP_HDR(38) = 0
+    BMP_HDR(39) = 0
+    BMP_HDR(40) = 0
+    BMP_HDR(41) = 0
+    BMP_HDR(42) = 0
+    BMP_HDR(43) = 0
+    BMP_HDR(44) = 0
+    BMP_HDR(45) = 0
+    BMP_HDR(46) = 0
+    BMP_HDR(47) = 0
+    BMP_HDR(48) = 0
+    BMP_HDR(49) = 0
+    BMP_HDR(50) = 0
+    BMP_HDR(51) = 0
+    BMP_HDR(52) = 0
+    BMP_HDR(53) = 0
+    For i = 54 To 1077 Step 4
+        BMP_HDR(i) = (i - 54) \ 4
+        BMP_HDR(i + 1) = (i - 54) \ 4
+        BMP_HDR(i + 2) = (i - 54) \ 4
+        BMP_HDR(i + 3) = 0
+    Next i
+    outputfilename = ThisWorkbook.Path + "\NOAA" + Format(Now(), "yyyy-mm-dd-hh-mm-ss") + ".bmp"
+    outputFn = FreeFile
+    Open outputfilename For Binary As #outputFn
+    For i = 0 To 1077
+        Put #outputFn, , BMP_HDR(i)
+    Next i
+    For i = 0 To 800000 - 1
+        Put #outputFn, , CByte(Pic_Buf(i))
+    Next i
+    Close #outputFn
+End Sub
